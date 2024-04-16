@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class VoidableRecord < ApplicationRecord
+class VoidableRecord < PartitionedRecord
   self.abstract_class = true
 
   include Auditable

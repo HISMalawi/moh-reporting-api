@@ -8,7 +8,7 @@
 #   2. date_retired:datetime
 #   3. retired_reason:string
 #   4. retired_by:long
-class RetirableRecord < ApplicationRecord
+class RetirableRecord < PartitionedRecord
   self.abstract_class = true
 
   include Auditable
