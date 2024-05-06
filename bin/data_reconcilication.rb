@@ -1,13 +1,14 @@
 require 'mysql2'
+require 'csv'
 
 # Configuration
-DESTINATION_DATABASE = "ohdl"
+DESTINATION_DATABASE = "openmrs_cummulative"
 TABLES = ['obs', 'encounter', 'users', 'drug_order', 'orders', 'patient', 'patient_identifier', 
 'patient_program', 'patient_state', 'person', 'person_address', 'person_attribute', 'person_name', 'relationship',
 'pharmacies', 'pharmacy_batch_item_reallocations', 'pharmacy_batch_items', 'pharmacy_batches', 'pharmacy_obs', 
 'pharmacy_stock_balances', 'pharmacy_stock_verifications']
-SOURCE_CREDENTIALS = { host: 'localhost', username: 'patrick', password: 'passpass', database: '', socket: '/var/run/mysqld/mysqld.sock' }
-DESTINATION_CREDENTIALS = { host: 'localhost', username: 'patrick', password: 'passpass', database: DESTINATION_DATABASE, socket: '/var/run/mysqld/mysqld.sock' }
+SOURCE_CREDENTIALS = { host: 'localhost', username: 'test', password: 'test', database: '', socket: '/var/run/mysqld/mysqld.sock' }
+DESTINATION_CREDENTIALS = { host: 'localhost', username: 'test', password: 'test', database: DESTINATION_DATABASE, socket: '/var/run/mysqld/mysqld.sock' }
 
 # Thread pool size
 POOL_SIZE = 350
@@ -59,6 +60,7 @@ pool = ThreadPool.new(POOL_SIZE)
 
 # Hash to track non-matched tables
 non_matched_tables = Hash.new(0)
+unmatched_tables = []
 
 source_databases.each do |source_database|
   # Create a new MySQL connection for each source database
@@ -85,6 +87,7 @@ source_databases.each do |source_database|
         if source_count != destination_count
           all_tables_match = false  # Set flag to false if there's a mismatch
           non_matched_tables[table_name] += 1
+          unmatched_tables << { source_database: source_database['database'], table_name: table_name, source_count: source_count, destination_count: destination_count}
         end
       rescue Mysql2::Error => e
         puts "Error: #{e.message}"  # Output error message
@@ -108,7 +111,14 @@ source_databases.each do |source_database|
     print "Progress: #{progress.round(2)}% (#{databases_reconciled}/#{total_databases} databases reconciled) \r"
 
     if databases_reconciled == total_databases
-      puts "\n\nReconciliation Summary:"
+      puts "Writing non-matched tables to file non_matched_tables.csv..."
+        CSV.open('log/non_matched_tables.csv', "w") do |csv|
+          csv << ["Source Database", "Table Name", "Source Count", "Destination Count"]
+          unmatched_tables.each do |table|
+            csv << [table[:source_database], table[:table_name], table[:source_count], table[:destination_count]]
+          end
+        end
+        puts "\n\nReconciliation Summary:"
       puts "Total databases reconciled: #{total_databases}"
       puts "Successful reconciliations: #{successful_reconciliations}"
       puts "Failed reconciliations: #{total_databases - successful_reconciliations}"
