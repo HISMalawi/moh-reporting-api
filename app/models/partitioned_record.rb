@@ -7,8 +7,8 @@ class PartitionedRecord < ApplicationRecord
   default_scope do
     partition = Thread.current[:location]
 
-    if partition && model.partitioned?
-      from("#{table_name} PARTITION (p#{partition_name})")
+    if partition.present? && model.partitioned?
+      from("#{table_name} PARTITION (p#{partition})")
     else
       all
     end
